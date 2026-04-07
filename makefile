@@ -23,9 +23,11 @@ testHeap: tests/testHeap.c lib/heap.c
 	./testHeap.exe
 
 ## Run graph loader tests
-testGraph: tests/testGraph.c lib/graph.c lib/heap.c 
+testGraph: tests/testGraph.c lib/graph.c
 	$(CC) -Wall -Wextra -std=c11 -g -O2 -o testGraph $^ -lm
 	./testGraph.exe
 
 clean:
 	-del /q /f $(TARGET).exe testHeap.exe testGraph.exe
+
+phony: all clean testHeap testGraph

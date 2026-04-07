@@ -17,9 +17,9 @@ typedef struct {
 } minHeap;
 
 void heap_init(minHeap *h);
-void heap_push(minHeap *h, double priority, uint32_t node_id);
+void heap_push(minHeap *h, uint32_t node_id, double priority);
 heapItem heap_pop(minHeap *h);
-void heap_decrease_key(minHeap *h, double new_priority, uint32_t node_id);
+void heap_decrease_key(minHeap *h, uint32_t node_id, double new_priority);
 int heap_contains(const minHeap *h, uint32_t node_id);
 int heap_empty(const minHeap *h);
 

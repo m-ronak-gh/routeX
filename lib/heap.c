@@ -56,12 +56,20 @@ void heap_push(minHeap *h, uint32_t node_id, double priority) {
 
 heapItem heap_pop(minHeap *h) {
     heapItem top = h->data[0];
-    h->pos[top.node_id] = -1;
+    h->pos[top.node_id] = -1; // Invalidate the popped item's position
+    
     h->size--;
     if (h->size > 0) {
-        h->pos[h->data[0].node_id] = 0;
-        shift_down(h, 0);
+        // 1. Move the last leaf node to the root
+        h->data[0] = h->data[h->size]; 
+        
+        // 2. Update its position in the lookup array
+        h->pos[h->data[0].node_id] = 0; 
+        
+        // 3. Bubble it down to its correct spot
+        shift_down(h, 0); 
     }
+    
     return top;
 }
 
