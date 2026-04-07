@@ -1,6 +1,7 @@
 import osmnx as ox
 import struct
 import sys
+import os
 
 # Using structured queries for smaller, faster-to-process cities
 CITIES = {
@@ -9,57 +10,65 @@ CITIES = {
     "nara": {"city": "Nara", "country": "Japan"}
 }
 
-def fetch_and_export(city_key):
+def fetch_and_export(city_key: str) -> None:
     if city_key not in CITIES:
-        print(f"Error: '{city_key}' not found in CITIES dictionary.")
-        return
-
+        print(f"City '{city_key}' not found. Available cities: {list(CITIES.keys())}")
+        sys.exit(1)
+    
     place = CITIES[city_key]
-    # Format a nice print string from the dictionary
-    place_name = ", ".join(place.values())
-    print(f"Downloading {place_name}...")
+    print(f"1. Fetching data for {place}...")
 
-    # Download drivable street network
-    G = ox.graph_from_place(place, network_type="drive")
-    G = ox.add_edge_speeds(G)        # adds speed_kph attribute
-    G = ox.add_edge_travel_times(G)  # adds travel_time attribute
+    # Fetch the graph for the specified city
+    G = ox.graph_from_place(place, network_type='drive', simplify=True)
 
-    # Project to UTM for accurate distances
-    G_proj = ox.project_graph(G)
+    nodes_gdf, edges_gdf = ox.graph_to_gdfs(G)
+    print(f"2. Downloaded {len(nodes_gdf)} nodes and {len(edges_gdf)} edges.")
 
-    nodes, edges = ox.graph_to_gdfs(G_proj)
-    print(f"Nodes: {len(nodes)}, Edges: {len(edges)}")
+    # OSM node IDs are large 64-bit integers, here remaped to uint32
+    node_list = list(nodes_gdf.index) # Extract list of node IDs
+    id_map = {osm_id: i for i, osm_id in enumerate(node_list)} # Map OSM IDs to sequential integers
+    n_nodes = len(node_list)
 
-    # Build compact ID mapping (osmnx uses OSM node IDs which are large)
-    node_ids = list(nodes.index)
-    id_map = {osm_id: i for i, osm_id in enumerate(node_ids)}
+    # Count valid edges, both endpoints must be in id_map
+    valid_edges = []
+    for (u, v, _), row in edges_gdf.iterrows():
+        if u in id_map and v in id_map:
+            length = float(row.get("length", 1.0))  # Default to 1.0 if length is missing
+            valid_edges.append((id_map[u], id_map[v], length))
+    n_edges = len(valid_edges)
 
-    out_path = f"data/{city_key}.bin"
-    with open(out_path, "wb") as f:
-        # Header: node count, edge count
-        n_nodes = len(node_ids)
-        n_edges = len(edges)
+    print(f"3. Processed {n_edges} valid edges.")
+
+    # Write to binary file
+    # Header : uint32 (n_nodes), uint32 (n_edges)
+    # Nodes  : n_nodes * (double lat, double lon) = n_nodes * 16 bytes
+    # Edges  : n_edges * (uint32 u[from], uint32 v[to], double length[weight]) = n_edges * 16 bytes
+
+    os.makedirs("data", exist_ok=True)
+    output_file = f"data/{city_key}.bin"
+    with open(output_file, "wb") as f:
+        # Write header
         f.write(struct.pack("II", n_nodes, n_edges))
 
-        # Nodes: lat, lon (as doubles) - use original (non-projected) coords
-        nodes_orig, _ = ox.graph_to_gdfs(G)
-        for osm_id in node_ids:
-            row = nodes_orig.loc[osm_id]
+        # Write nodes
+        for osm_id in node_list:
+            row = nodes_gdf.loc[osm_id]
             lat = float(row["y"])
             lon = float(row["x"])
             f.write(struct.pack("dd", lat, lon))
 
-        # Edges: from_id, to_id (compact ints), weight in metres
-        for (u, v, _), row in edges.iterrows():
-            if u not in id_map or v not in id_map:
-                continue
-            from_id = id_map[u]
-            to_id = id_map[v]
-            length = float(row.get("length", 1.0))
-            f.write(struct.pack("IId", from_id, to_id, length))
-
-    print(f"Written to {out_path}")
+        # Write edges
+        for u, v, length in valid_edges:
+            f.write(struct.pack("IId", u, v, length))
+    
+    file_size = os.path.getsize(output_file) // (1024) # Size in KB
+    print(f"4. Exported data to '{output_file}' ({file_size:.2f} KB).")
 
 if __name__ == "__main__":
-    city = sys.argv[1] if len(sys.argv) > 1 else "cambridge"
-    fetch_and_export(city)
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <city_key>")
+        print(f"Available cities: {list(CITIES.keys())}")
+        sys.exit(1)
+    
+    city_key = sys.argv[1]
+    fetch_and_export(city_key)

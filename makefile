@@ -17,5 +17,15 @@ all: $(TARGET)
 $(TARGET): $(SRCS)
 	$(CC) $(SRCS) -o $(TARGET) $(CFLAGS) $(LDFLAGS)
 
+## Run heap tests
+testHeap: tests/testHeap.c lib/heap.c
+	$(CC) -Wall -Wextra -std=c11 -g -O2 -o testHeap $^ -lm
+	./testHeap.exe
+
+## Run graph loader tests
+testGraph: tests/testGraph.c lib/graph.c lib/heap.c 
+	$(CC) -Wall -Wextra -std=c11 -g -O2 -o testGraph $^ -lm
+	./testGraph.exe
+
 clean:
-	-del /q /f $(TARGET).exe
+	-del /q /f $(TARGET).exe testHeap.exe testGraph.exe
