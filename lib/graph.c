@@ -80,21 +80,17 @@ int graph_load(Graph* g, const char* filename) {
     return 1;
 }
 
-void graph_project(
-    Graph* g,
-    double zoom,
-    double center_lat, double center_lon,
-    double pan_x, double pan_y,
-    int screen_width, int screen_height){
-        for(int i=0; i< g->n_nodes; i++){
-            // x grows east (lon increases right)
-            double dx = (g->nodes[i].lon - center_lon) * zoom;
-
-            //y grows north (lat increases up)
-            double dy = (g->nodes[i].lat - center_lat) * zoom;
-            g->nodes[i].sx = (int)(screen_width * 0.5 + dx + pan_x);
-            g->nodes[i].sy = (int)(screen_height * 0.5 -dy - pan_y);
-        }
+void graph_project(Graph *g,
+                   int screen_width, int screen_height,
+                   double zoom,
+                   double center_lat, double center_lon,
+                   double pan_x, double pan_y) {
+    for (int i = 0; i < g->n_nodes; i++) {
+        double dx = (g->nodes[i].lon - center_lon) * zoom;
+        double dy = (g->nodes[i].lat - center_lat) * zoom;
+        g->nodes[i].sx = (int)(screen_width  * 0.5 + dx + pan_x);
+        g->nodes[i].sy = (int)(screen_height * 0.5 - dy + pan_y);
+    }
 }
 
 int graph_nearest_node(const Graph* g, int px, int py){

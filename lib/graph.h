@@ -49,10 +49,10 @@ int graph_load(Graph* g, const char* filename);
 //// project geographical coordinates to screen coordinates
 void graph_project(
     Graph* g,
+    int screen_width, int screen_height,
     double zoom,
     double center_lat, double center_lon,
-    double pan_x, double pan_y,
-    int screen_width, int screen_height
+    double pan_x, double pan_y
 );
 
 //// find the nearest node to a given point (px, py) in screen coordinates
